@@ -2,35 +2,51 @@ import fitz
 import zipfile
 import os
 from rich.console import Console
+import pytesseract
+from PIL import Image
+import io
 
 console = Console()
 
-# Define the path to your zip file and the extract destination
-if not os.path.exists("Masking/"):
-    zip_path = 'Masking.zip'
-    extract_path = '.'
+def unzip_files() -> None:
+    # unzip file if not already unzipped
+    if not os.path.exists("Masking/"):
+        zip_path = 'Masking.zip'
+        extract_path = '.'
 
-    # Open the zip file and extract its contents
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(extract_path)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_path)
 
-    console.print(f"Files extracted to '{extract_path}'")
+        console.print(f"Files extracted to '{extract_path}'")
 
-    for file in os.listdir('Masking'):
-        print(file)
+        for file in os.listdir('Masking'):
+            print(file)
 
-# Open the PDF file
-pdf1 = 'Masking/Mask1.pdf'
-pdf2 = 'Masking/Mask2.pdf'
-doc1 = fitz.open(pdf1)
-doc2 = fitz.open(pdf2)
+def open_docs() -> None:
+    # Open the PDF files
+    docs = []
+    for file in os.listdir("Masking"):
+        docs.append(fitz.open("Masking/" + file))
+        print(type)
+    return docs
 
-# Loop through pages and extract text
-for doc in [doc1, doc2]:
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)  # Load the page
-        text = page.get_text()          # Extract text
-        print(f"--- Page {page_num + 1} ---")
-        print(text)
-    doc.close()
+def ocr_docs(docs) -> None:
+    for i, doc in enumerate(docs):
+        console.print(f"Doc {i}:")
+        for j, page in enumerate(doc):
+            console.print(f"Page {j}:")
+            pix = page.get_pixmap()
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
+            text = pytesseract.image_to_string(img)
+            print(text)
+        doc.close()
 
+def main() -> None:
+    # set tesseract path because we aren't allowed to change our env vars :(((
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    unzip_files()
+    docs = open_docs()
+    ocr_docs(docs)
+
+if __name__ == "__main__":
+    main()
