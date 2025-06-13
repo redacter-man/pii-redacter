@@ -32,9 +32,9 @@ def open_docs() -> None:
 
 def ocr_docs(docs) -> None:
     for i, doc in enumerate(docs):
-        console.print(f"Doc {i}:")
+        console.print(f"Doc {i + 1}:")
         for j, page in enumerate(doc):
-            console.print(f"Page {j}:")
+            console.print(f"Page {j + 1}:")
             pix = page.get_pixmap()
             img = Image.open(io.BytesIO(pix.tobytes("png")))
             text = pytesseract.image_to_string(img)
