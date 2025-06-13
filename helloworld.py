@@ -1,26 +1,27 @@
-import fitz
-import zipfile
+import io
 import os
-from rich.console import Console
+import zipfile
+
+import fitz
 import pytesseract
 from PIL import Image
-import io
+from rich.console import Console
 
 console = Console()
 
 def unzip_files() -> None:
-    # unzip file if not already unzipped
-    if not os.path.exists("Masking/"):
-        zip_path = 'Masking.zip'
-        extract_path = '.'
+    # Delete the masking directory containing all of our data
+    os.rmdir("Masking/")
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_path)
-
-        console.print(f"Files extracted to '{extract_path}'")
-
-        for file in os.listdir('Masking'):
-            print(file)
+    # Unzip the zip files from zip file; 
+    # Note: Clean reset everytime
+    zip_path = 'Masking.zip'
+    extract_path = '.'
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_path)
+    console.print(f"Files extracted to '{extract_path}'")
+    for file in os.listdir('Masking'):
+        print(file)
 
 def open_docs() -> None:
     # Open the PDF files
