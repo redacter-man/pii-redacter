@@ -44,3 +44,4 @@ uv run
 - [Pillow Documentation](https://pillow.readthedocs.io/en/stable/)
 - [OpenCV Documentation](https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html)
 - [open-cv Python](https://github.com/opencv/opencv-python)
+- [Document AI Google](https://cloud.google.com/document-ai/docs/create-processor)
