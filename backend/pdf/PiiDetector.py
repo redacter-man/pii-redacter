@@ -2,6 +2,7 @@ import re
 from .PageData import PageData, TextElement
 from typing import List
 
+
 class PiiDetector:
   """Handles all the operations related to recognizing string patterns from PDF page text
   in order to identify target PIIs.
@@ -11,12 +12,12 @@ class PiiDetector:
 
   def is_valid_ssn(str: str) -> bool:
     """Returns true if a string is a valid SSN number. In form AAA-BB-CCCC."""
-    return re.search( r"\d{3}-\d{2}-\d{4}", str)
+    return re.search(r"\d{3}-\d{2}-\d{4}", str)
 
   def is_valid_bank_account_number(str: str) -> bool:
     """
     Heuristic: Treats any digit sequence of 10 to 17 digits as a bank account number.
-    
+
     Notes:
     - Bank account numbers have no universal format.
     - This is a cautious guess assuming longer digit sequences are sensitive.
@@ -25,11 +26,9 @@ class PiiDetector:
     return re.search(r"\d{10,17}", str)
 
   def is_valid_bank_routing_number(str: str) -> bool:
-    """Returns true if string is a valid bank routing number. Most US routing numbers are just 9-digit sequences.
-
-    """
+    """Returns true if string is a valid bank routing number. Most US routing numbers are just 9-digit sequences."""
     return re.search(r"\d{9}", str)
-  
+
   def contains_credit_score(str: str) -> bool:
     """
     Returns True if the string indicates a credit score disclosure.
@@ -37,11 +36,11 @@ class PiiDetector:
     """
     text_lower = str.lower()
     if "credit score" in text_lower:
-        return True
-    
+      return True
+
     # fuzzy match with common patterns (e.g., "credit score is", "credit score: 720")
     if re.search(r"credit score[:\s]+(?:is\s+)?\d{3}", text_lower):
-        return True
+      return True
 
   def contains_credit_report(str: str) -> bool:
     """
@@ -51,8 +50,8 @@ class PiiDetector:
     return "credit report" in str.lower()
 
   def detect_page_piis(page_data: PageData) -> List[TextElement]:
-    """Receives text data about a particular page on a PDF and sends back PIIs. 
-    Note: This will likely evolve when we start reading handwriting with ocr, and I'm guessing then, an 
+    """Receives text data about a particular page on a PDF and sends back PIIs.
+    Note: This will likely evolve when we start reading handwriting with ocr, and I'm guessing then, an
     ssn like 123-456-789 will probably be sectioned off into separate words.
     """
     detected_piis = []
@@ -75,6 +74,5 @@ class PiiDetector:
           elif PiiDetector.contains_credit_score(text):
             element.detected_as = "Credit Score"
             detected_piis.append(element)
-
 
     return detected_piis

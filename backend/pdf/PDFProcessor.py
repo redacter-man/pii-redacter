@@ -55,13 +55,12 @@ class PDFProcessor:
 
     Note: When there's no text, the "blocks" field will be an empty array.
     But note that the blocks field may have something else like a block as an image.
-    Our pymupdf_to_unified function at least takes care of that. So at least 
+    Our pymupdf_to_unified function at least takes care of that. So at least
     when the redactor is getting data, it's in this unified form.
     """
-      
+
     page_text = page.get_text("dict")
     page_text = pymupdf_to_unified(page_text)
-
 
     return page_text
 
