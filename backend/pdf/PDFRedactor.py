@@ -43,13 +43,10 @@ class PDFRedactor:
       output_path = os.path.join(output_dir, filename)
       PDFRedactor.process_single_pdf(full_path, output_path)
 
-  def process_single_pdf(job_dir, pdf_name: str, output_path: str) -> None:
+  def process_single_pdf(pdf_path: str, output_path: str) -> None:
     """Redacts a single pdf file"""
 
-
-    pdf_path = os.path.join(job_dir, pdf_name)
     pdf_processor: PDFProcessor = PDFProcessor(pdf_path, output_path)
-
 
     for page in pdf_processor.pdf_doc:
       # List of objects in form: (x0, y0, x1, y1, "word", block_no, line_no, word_no)

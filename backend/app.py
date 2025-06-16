@@ -4,7 +4,6 @@ import os
 
 def main():
   print("Started PDF Processing Application")
-
   input_path = os.path.join(os.path.dirname(__file__), "pdf", "test_data", "Mask2.pdf")
   output_path = os.path.join(
     os.path.dirname(__file__), "pdf", "test_data", "Mask2_redacted.pdf"
