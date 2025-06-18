@@ -1,7 +1,10 @@
+from dotenv import load_dotenv
+import os
 from google.api_core.client_options import ClientOptions
 from google.cloud import documentai_v1
 
-# TODO(developer): Create a processor of type "OCR_PROCESSOR".
+load_dotenv()
+
 
 # TODO(developer): Update and uncomment these variables before running the sample.
 project_id = "redacter-463315"
@@ -14,7 +17,7 @@ processor_id = "7796afb6598ad259"
 location = "us"
 
 # Path for file to process.
-file_path = "/Users/angelogonzalez/Coding/redacter/pii-redacter/backend/pdf/test_data/1040-1.pdf"
+file_path = os.path.join(os.path.dirname(__file__), "test_data", "1040-1.pdf")
 
 # Set `api_endpoint` if you use a location other than "us".
 opts = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
