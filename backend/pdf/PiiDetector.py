@@ -72,6 +72,8 @@ class PiiDetector:
             element.detected_as = "Routing Number"
             element.text = match.group()
             detected_piis.append(element)
+            
+            #Note: searches for these words, then redacts instead of the whole sentence/phrase
           elif match := re.search(r"\b(?:execeptional|excellent|very good|good|fair|poor)\b", text, re.IGNORECASE):
             element.detected_as = "Credit Report"
             element.text = match.group()
