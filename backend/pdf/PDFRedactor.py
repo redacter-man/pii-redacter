@@ -96,7 +96,10 @@ class PDFRedactor:
       print("Detected PII Elements")
       pii_elements = PiiDetector.detect_page_piis(page_data)
       for pii in pii_elements:
-        pdf_processor.redact_pdf_content(page, pii.bbox)  
+        
+        # redacts the text so only the PII is redacted and not the label as well
+        pdf_processor.redact_pdf_text(page, pii.text)  
+      page.apply_redactions()
     
     # Save and close the changes; pdf is outputted to the output path now
     pdf_processor.save_and_close()

@@ -1,4 +1,5 @@
 import pymupdf, os
+import re
 from .PageData import pymupdf_to_unified, PageData, BoundingBox
 
 """
@@ -76,7 +77,6 @@ class PDFProcessor:
     It seemes that saving after every redaction is kind of inefficient.
     """
     page.add_redact_annot(rect, fill=(0, 0, 0))
-    page.apply_redactions()
 
   def redact_pdf_text(self, page: pymupdf.Page, text_to_redact: str):
     """Redacts text given a page and text on the page we want to redact
@@ -89,6 +89,7 @@ class PDFProcessor:
     for inst in instances:
       self.redact_pdf_helper(page, inst)
 
+  # NOTE: redact_pdf_content is no longer used; use redact_pdf_text for text-based redaction instead.
   def redact_pdf_content(self, page: pymupdf.Page, bbox: BoundingBox) -> None:
     """Redacts content on a pdf, given a page and information about the bounding box we want to redact.
     Args:
@@ -130,7 +131,7 @@ class PDFProcessor:
         output_path (str, optional): The output path that ou want to save the modified PDF to
     """
     if self.output_path:
-      self.pdf_doc.save(self.output_path)
+      self.pdf_doc.save(self.output_path, garbage=4, deflate=True)
     else:
       self.pdf_doc.save()
     self.pdf_doc.close()

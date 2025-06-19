@@ -60,20 +60,27 @@ class PiiDetector:
       for line in block.lines:
         for element in line.elements:
           text = element.text
-          if PiiDetector.is_valid_ssn(text):
+          if match := PiiDetector.is_valid_ssn(text):
             element.detected_as = "SSN"
+            element.text = match.group()
             detected_piis.append(element)
-          elif PiiDetector.is_valid_bank_account_number(text):
+          elif match := PiiDetector.is_valid_bank_account_number(text):
             element.detected_as = "Account Number"
+            element.text = match.group()
             detected_piis.append(element)
-          elif PiiDetector.is_valid_bank_routing_number(text):
+          elif match := PiiDetector.is_valid_bank_routing_number(text):
             element.detected_as = "Routing Number"
+            element.text = match.group()
             detected_piis.append(element)
-          elif PiiDetector.contains_credit_report(text):
+          elif match := re.search(r"\b(?:execeptional|excellent|very good|good|fair|poor)\b", text, re.IGNORECASE):
             element.detected_as = "Credit Report"
+            element.text = match.group()
             detected_piis.append(element)
-          elif PiiDetector.contains_credit_score(text):
+          elif  match := re.search(r"credit score[:\s]*(?:is\s*)?(\d{3})", text, re.IGNORECASE):
+            
+            #Note: doing this because it'll just redact the score instaead of the whole sentence/phrase
             element.detected_as = "Credit Score"
+            element.text = match.group(1)
             detected_piis.append(element)
 
 
