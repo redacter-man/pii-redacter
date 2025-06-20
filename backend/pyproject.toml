@@ -1,25 +1,3 @@
-[project]
-name = "pii-redacter"
-version = "0.1.0"
-description = "Redacts PIIs from PDFs"
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-  "PyMuPDF==1.26.0", 
-  "pillow==11.2.1",
-  "rich==14.0.0", # For good output, UV also downloads its dependencies like mdurl, pygments, and markdown-it-py
-  "paddlepaddle",
-  "paddleocr",
-
-  # TrOCR: May try this out later since it's a Microsoft backed OCR 
-  # that specializes with hand-writing.
-]
-
-[dependency-groups]
-dev = [
-    "ruff>=0.11.8",
-]
-
 [tool.ruff]
 include = ["/**/*.py"] # starts at the location of pyproject.toml
 indent-width = 2
