@@ -1,5 +1,8 @@
 import pymupdf, os
+import re
 from .PageData import pymupdf_to_unified, PageData, BoundingBox
+from .logger_config import logger
+
 
 """
 This module provides PDF redaction and conversion utilities using PyMuPDF.
@@ -58,11 +61,8 @@ class PDFProcessor:
     Our pymupdf_to_unified function at least takes care of that. So at least 
     when the redactor is getting data, it's in this unified form.
     """
-      
     page_text = page.get_text("dict")
     page_text = pymupdf_to_unified(page_text)
-
-
     return page_text
 
   def redact_pdf_helper(self, page: pymupdf.Page, rect):
@@ -76,7 +76,6 @@ class PDFProcessor:
     It seemes that saving after every redaction is kind of inefficient.
     """
     page.add_redact_annot(rect, fill=(0, 0, 0))
-    page.apply_redactions()
 
   def redact_pdf_text(self, page: pymupdf.Page, text_to_redact: str):
     """Redacts text given a page and text on the page we want to redact
@@ -89,6 +88,7 @@ class PDFProcessor:
     for inst in instances:
       self.redact_pdf_helper(page, inst)
 
+  # NOTE: redact_pdf_content is no longer used; use redact_pdf_text for text-based redaction instead.
   def redact_pdf_content(self, page: pymupdf.Page, bbox: BoundingBox) -> None:
     """Redacts content on a pdf, given a page and information about the bounding box we want to redact.
     Args:
@@ -104,25 +104,24 @@ class PDFProcessor:
       bbox.x1,
       bbox.y1,
     ]
+    page_width = page.rect.width
+    page_height = page.rect.height
+
+    if not (0 <= bbox.x0 < bbox.x1 <= page_width and 0 <= bbox.y0 < bbox.y1 <= page_height):
+      logger.warning(f"Redaction bbox {rect} is out of bounds for page size {page_width:.2f}x{page_height:.2f}. Operation skipped!")
+      return
+
     self.redact_pdf_helper(page, rect)
 
-  # Note:
-  # May need these later:
+  
+  def is_image_pdf(self) -> bool:
+    first_page = self.pdf_doc[0]
+    text = first_page.get_text()
+    if not text.strip():
+      return True
+    else:
+      return False
 
-  # def convert_image_to_pdf(self):
-  #   pass
-
-  # def convert_pdf_to_image(self, page: pymupdf.Page,  ):
-  #   # Create a zoom matrix, which just means you're going to get better resolution on the resulting image
-  #   zoom_x = 2.0
-  #   zoom_y = 2.0
-  #   zoom_matrix = pymupdf.Matrix(zoom_x, zoom_y)
-  #   pixel_map = page.get_pixmap(matrix=zoom_matrix)
-  #   return pixel_map
-
-  def get_pages(self):
-    for page in self.pdf_doc:
-      yield page
 
   def save_and_close(self):
     """Saves and closes the opened pdf
@@ -130,7 +129,7 @@ class PDFProcessor:
         output_path (str, optional): The output path that ou want to save the modified PDF to
     """
     if self.output_path:
-      self.pdf_doc.save(self.output_path)
+      self.pdf_doc.save(self.output_path, garbage=4, deflate=True)
     else:
       self.pdf_doc.save()
     self.pdf_doc.close()

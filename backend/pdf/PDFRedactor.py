@@ -1,7 +1,9 @@
 import zipfile, os
 from pdf.PDFProcessor import PDFProcessor
 from pdf.PiiDetector import PiiDetector
-from pdf.PageData import print_page_data
+from pdf.PageData import print_page_data, BoundingBox
+from pdf.PDFAdapter import PDFAdapter
+from .logger_config import logger
 
 
 class PDFRedactor:
@@ -39,55 +41,46 @@ class PDFRedactor:
       PDFRedactor.process_single_pdf(full_path, output_path)
 
   def process_single_pdf(pdf_path: str, output_path: str) -> None:
-    """Redacts a single pdf file
-
-    Step by Step Algorithm:
-    1. Load the PDF in memory using the PDFProcessor class
-    2. Attempt to extract text from the pdf. If there was no text, then it's likely an
-      image-based pdf. In that case, apply hand-written OCR model to the pdf.Now try to extract text from it.
-
-    3. Now that we have the text, we need to do some PII redactions. You need to map the text for
-      any piis to a coordinate system. If you're doing OCR, you may have to deal with the image
-      coordinate system meaning you may have to map things over. If dealing with the MuPDF
-      system, it's going to be a bit more easier for the PDFProcessor class.
-
-    ### Challenging Issue: Coordinates and Mapping
-
-    My vision for this workflow is that with each word or text that is extracted, we'll have it in form:
-      - (text, x, y, width, height), where
-      - text: The actual text that's detected in string form
-      - x: X-coordinate of the top left corner of the bounding box of that text.
-      - y: Y-coordinate of the top left corner of the bounding box of that text.
-      - width: Width of the bounding box
-      - height: height of the bounding box.
-
-    Now here are some issues and todos we need to tackle:
-    - We need to update the extract_text() method to return data in that form we just came up with. This is done with page.get_text("words"). It's not exactly in the form
-      we want, but it seems like we have enough data to do bounding box redactions so that's good enough. Everything will become uniform later.
-    - When applying OCR, the coordinate system of an image is different from the coordinate system of a PDF or MuPDF. We'll want to
-      convert those coordinates and dimensions to that of MuPDF, or we'll want to apply those redactions within the OCR engine then
-    - I think most OCRs, or at least PaddleOCR will be returning data like the line number, block number.
-    """
+    """Redacts a single pdf file"""
 
     pdf_processor: PDFProcessor = PDFProcessor(pdf_path, output_path)
-    for page in pdf_processor.pdf_doc:
-      # List of objects in form: (x0, y0, x1, y1, "word", block_no, line_no, word_no)
-      # Or dictionary form is fine too
 
+    pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    is_image_pdf = pdf_processor.is_image_pdf()
+    logger.info(
+        f"'{pdf_name}' loaded successfully: "
+        f"first page size: {pdf_processor.pdf_doc[0].rect.width:.2f} x {pdf_processor.pdf_doc[0].rect.height:.2f} points"
+    )
+
+    logger.info(f"'{pdf_name}' found and loaded successfully!")
+    if is_image_pdf:
+      logger.info(f"'{pdf_name}' is likely an image-based PDF. Activating OCR!")
+      page_data_list = PDFAdapter.google_doc_to_data(pdf_path, use_cache=True)
+      logger.info(f"'PDF Data Obtained'. Now evaluating PIIs!")      
+      for index, page in enumerate(pdf_processor.pdf_doc):
+        page_data = page_data_list[index]
+        pii_elements = PiiDetector.detect_page_piis(page_data)
+        
+        for pii in pii_elements:
+          print("PIi: ", pii)
+          pdf_processor.redact_pdf_content(page, pii.bbox)  
+          page.apply_redactions()
+        
+      pdf_processor.save_and_close()
+      return
+    
+    logger.info(f"'{pdf_name}' is likely a text-based PDF. Preparing PDF parsing technology!")
+    logger.info(f"'PDF Data Obtained'. Now evaluating PIIs!")
+
+
+    page_data_list = PDFAdapter.pymupdf_to_data(pdf_processor.pdf_doc)
+    print_page_data(page_data_list[0])
+
+
+
+
+    for page in pdf_processor.pdf_doc:      
       page_data = pdf_processor.extract_text(page)
-      
-
-      if page_data.is_empty:
-        # Apply OCR:
-        #   1. Apply hand-written OCR model
-        #   2. Apply machine print OCR model
-        # Combine the results into one array. 
-        # Note: When applying OCR, you're probably going to turn the pdf page into an image, and then your image is going to detect the bounding boxes of the text in the image, which 
-        # is on a different coordinate field, with different stuff to work with. You have two different options:
-        #   1. You can either convert the bounding boxes back into PyMuPDF's format, which requires some kind of transformation matrix.
-        #   2. Or you could save and redact the text elements within the image itself. Then save the image to pdf form. This is probably 
-        #      Quite a bit easier, and maybe a little more reliable. In this case though, we'd have two clean conditional branches which would be nice.
-        print("Apply OCR")
 
       # At this point we have some type of data
       print("Parsed PDF Text: ")
@@ -96,7 +89,11 @@ class PDFRedactor:
       print("Detected PII Elements")
       pii_elements = PiiDetector.detect_page_piis(page_data)
       for pii in pii_elements:
-        pdf_processor.redact_pdf_content(page, pii.bbox)  
+        print("PIi: ", pii)
+        # redacts the text so only the PII is redacted and not the label as well
+         
+        # pdf_processor.redact_pdf_text(page, pii.text)  
+      page.apply_redactions()
     
     # Save and close the changes; pdf is outputted to the output path now
     pdf_processor.save_and_close()
