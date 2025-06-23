@@ -1,5 +1,4 @@
 import re
-from .PageData import PageData, TextElement
 from typing import List
 
 class PiiDetector:
