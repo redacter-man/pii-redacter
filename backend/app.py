@@ -5,11 +5,15 @@ import os
 def main():
   print("Started PDF Processing Application")
 
-  input_path = os.path.join(os.path.dirname(__file__), "pdf", "test_data", "Mask3.pdf")
-  output_path = os.path.join(os.path.dirname(__file__), "pdf", "test_data", "Mask3_redacted.pdf")
+
+  work_dir = os.path.join(os.path.dirname(__file__), "jobs", "sample_job")
+
+
+  input_path = os.path.join(os.path.dirname(__file__), "pdf", "test_data", "06-text-essay.pdf")
+  output_path = os.path.join(os.path.dirname(__file__), "pdf", "test_data", "06-text-essay-redacted.pdf")
 
   if os.path.exists(input_path):
-    PDFRedactor.process_single_pdf(input_path, output_path)
+    PDFRedactor.process_single_pdf(work_dir, input_path)
   else:
     print("File DNE")
   

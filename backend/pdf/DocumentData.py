@@ -25,10 +25,13 @@ class PIIMatch:
   - end_index: Ending index of the match in the document's full text.
   - detected_as: The type of PII that we detected this amatch as.
   """
-  content: str
+  text: str
   start_index: int
   end_index: int
   pii_type: PIIType
+
+  def __repr__(self):
+    return f"PIIMatch(type={self.pii_type.name}), text='{self.text}'"
 
 @dataclass
 class BoundingBox:
@@ -71,6 +74,10 @@ class Token:
   bbox: BoundingBox
   text_segments: List[TextSegment]
   detected_as: Optional[str] = None
+
+  def __repr__(self):
+    # TODO: Probably better to make detected_as a Optional enum
+    return f"Token(detected_as={self.pii_type.name}), text='{self.text}'"
 
   def char_indices(self) -> List[Tuple[int, int]]:
     """Get all (start, end) index pairs for this element in document text."""

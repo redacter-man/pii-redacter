@@ -1,15 +1,16 @@
+from typing import List
 import zipfile, os
-from pdf.PiiDetector import PiiDetector
+from pdf.PIIDetector import PIIDetector
 from pdf.PDFAdapter import PDFAdapter
 from .logger_config import logger
-from .DocumentData import BoundingBox
+from .DocumentData import DocumentData, Token, BoundingBox
 import pymupdf
 
 
 class PDFRedactor:
   """A class with static methods that will do the orchestration between the helper classes."""
 
-  def process_single_pdf(pdf_path: str, output_path: str) -> None:
+  def process_single_pdf(work_dir, pdf_path: str) -> None:
     """Redacts a single pdf file"""
 
     # PDF existence check, load it in, and make sure we loaded in a pdf
@@ -20,39 +21,36 @@ class PDFRedactor:
       raise ValueError(
         f"Error: Document at path '{pdf_path}' was opened, but it wasn't a pdf!"
       )
+    os.makedirs(work_dir, exist_ok=True)
     
-    pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    # pdf name with extension
+    pdf_name = os.path.basename(pdf_path)
     is_image_pdf = PDFRedactor.is_image_pdf(pdf_doc)
 
     logger.info(f"'{pdf_name}' found and loaded successfully!")
     if is_image_pdf:
       logger.info(f"'{pdf_name}' is likely an image-based PDF. Activating OCR!")
-      page_data_list = PDFAdapter.google_doc_to_data(pdf_path, use_cache=True)
-      logger.info(f"'PDF Data Obtained'. Now evaluating PIIs!")      
-      for index, page in enumerate(pdf_doc):
-        page_data = page_data_list[index]
-        pii_elements = PiiDetector.detect_page_piis(page_data)
-        
-        for pii in pii_elements:
-          print("PIi: ", pii)
-          PDFRedactor.redact_pdf_content(page, pii.bbox)  
-          page.apply_redactions()
-        
-      pdf_doc.save(output_path, garbage=4, deflate=True)
-      pdf_doc.close()
-      return
+      doc_data: DocumentData = PDFAdapter.google_doc_to_data(pdf_path, use_cache=True)
+    else:
+      # Else text-based pdf, so parse the text from it
+      logger.info(f"'{pdf_name}' is likely an text-based PDF. Parsing!")
+      doc_data: DocumentData = PDFAdapter.pymupdf_to_data(pdf_doc)
     
-    logger.info(f"'{pdf_name}' is likely a text-based PDF. Preparing PDF parsing technology!")
-    logger.info(f"'PDF Data Obtained'. Now evaluating PIIs!")
+    logger.info(f"PDF Data Obtained!")
 
-    # TODO: Handle the text-based case after you're done making the new data model.
-    # Or probably after you're done adjusting everything to fit the new model
-    # Save and close the changes; pdf is outputted to the output path now
     
-    pdf_doc.save(output_path, garbage=4, deflate=True)
+    pii_tokens = PIIDetector.get_pii_tokens(work_dir, doc_data)    
+    for pii_token_object in pii_tokens:
+      page_index, token = pii_token_object
+      pdf_page = pdf_doc[page_index]
+      PDFRedactor.redact_pdf_content(pdf_page, token.bbox)  
+      pdf_page.apply_redactions()
+        
+    pdf_doc.save(os.path.join(work_dir, pdf_name), garbage=4, deflate=True)
     pdf_doc.close()
-
-  def redact_pdf_content(self, page: pymupdf.Page, bbox: BoundingBox) -> None:
+  
+    
+  def redact_pdf_content(page: pymupdf.Page, bbox: BoundingBox) -> None:
     """Redacts content on a pdf, given a page and information about the bounding box we want to redact.
     Args:
         page (pymupdf.Page): Page that we're redacting content on.
@@ -74,9 +72,9 @@ class PDFRedactor:
       logger.warning(f"Redaction bbox {rect} is out of bounds for page size {page_width:.2f}x{page_height:.2f}. Operation skipped!")
       return
 
-    self.redact_pdf_helper(page, rect)
+    PDFRedactor.redact_pdf_helper(page, rect)
 
-  def redact_pdf_content(self, page: pymupdf.Page, bbox: BoundingBox) -> None:
+  def redact_pdf_content(page: pymupdf.Page, bbox: BoundingBox) -> None:
     """Redacts content on a pdf, given a page and information about the bounding box we want to redact.
     Args:
         page (pymupdf.Page): Page that we're redacting content on.
