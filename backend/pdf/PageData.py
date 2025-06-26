@@ -19,177 +19,210 @@ class BoundingBox:
     y1: float
 
 @dataclass  
-class TextElement:
-    """Individual text element (word/span level)
+class Token:
+    """Individual token (word/span level) with position and content information
     - text: The actual text content as a string that was parsed.
-    - bbox: Bounding box of the text element
+    - bbox: Bounding box of the token
     - confidence: An optional OCR confidence score, which will be filled in cases where OCR is applied.
-    - detected_as: An optional parameter that is assigned when a TextElement is detected as a PII. We record 
+    - detected_as: An optional parameter that is assigned when a Token is detected as a PII. We record 
     what PII we believe it was e.g. 'SSN', 'Routing Number', 'Account Number'.
+    - page_index: The page number this token belongs to (0-indexed)
+    - token_index: The position of this token within the document text
     """
     text: str
     bbox: BoundingBox
     confidence: Optional[float] = None
     detected_as: Optional[str] = None
+    page_index: int = 0
+    token_index: int = 0
 
 @dataclass
-class TextLine:
-    """Structure representing a line of text that containing multiple text elements.
-    
-    
-    - elements: Elements in that line of text.
-    - bbox: Bounding box
-    - line_id: ID number of the line
-
-    Note: Whilst I did do that write-up for multiple words, I don't know for sure how efficable this technique truly is, or if it will even help at all.
-    But it theory it seems useful to reconstruct lines of text, how we already saw that a span can contain multiple words, so maybe it's not necessary.
-    """
-    elements: List[TextElement]
-    bbox: BoundingBox
-    line_id: int
-    
-    @property
-    def full_text(self) -> str:
-        """Reconstruct full line text"""
-        return " ".join([elem.text for elem in self.elements])
-
-@dataclass
-class TextBlock:
-    """Block containing multiple lines
-    
-    - bbox: The bounding box of the text box.
-    - block_id: The id number of the block
-    - block_type: the type of block we're processing
-    """
-    lines: List[TextLine]
-    bbox: BoundingBox
-    block_id: int
-    block_type: str = "text"  # "text", "image", "table", etc.
-
-@dataclass
-class PageData:
-    """Complete page text data
-    
-    - block: List of text blocks
+class Page:
+    """Complete page data containing tokens and page dimensions
+    - tokens: List of tokens on this page
     - width: width of the pdf page 
     - height: height of the pdf page
-    - source: Where the data came from. 
-
-    Note: "source" probably isn't needed.
+    - page_index: The page number (0-indexed)
+    - source: Where the data came from (e.g., "pymupdf", "GoogleOCR")
     """
-    blocks: List[TextBlock]
+    tokens: List[Token]
     width: float
     height: float
-    source: str  # "pymupdf", "paddleocr", "trocr"
+    page_index: int
+    source: str
 
     @property
     def is_empty(self) -> bool:
-        """Indicates whether the page has data or not
-        
-        Note: If the array of blocks is 0, it's empty, else has content.
+        """Indicates whether the page has tokens or not"""
+        return len(self.tokens) == 0
 
-        TODO: Hope that's how it works.
-        """
-        return len(self.blocks) == 0
+@dataclass
+class Document:
+    """Complete document data containing all pages and full text
+    - pages: List of pages in the document
+    - full_text: Complete text content of the document
+    - source: Where the data came from
+    """
+    pages: List[Page]
+    full_text: str
+    source: str
+
+    @property
+    def all_tokens(self) -> List[Token]:
+        """Get all tokens from all pages in document order"""
+        all_tokens = []
+        for page in self.pages:
+            all_tokens.extend(page.tokens)
+        return all_tokens
+
+    @property
+    def detected_pii_tokens(self) -> List[Token]:
+        """Get all tokens that were detected as PII"""
+        return [token for token in self.all_tokens if token.detected_as is not None]
 
 #### Defining Conversion functions for different PDF parsing methods #####
-def pymupdf_to_unified(page_dict: Dict) -> PageData:
-    """Convert PyMuPDF dict output int our unified format"""
-  
-    '''
-    - Iterate through all text blocks:
-      - For a given text block, iterate through all lines:
-        - for a given line, collect all of its span elements and 
-          put them into the elements array. If a line has no span elements (it has no content)
-          we just won't put that line in the lines array.
-        - At this point we've collected all lines for the text block, and 
-          record the text block in the blocks array as long as it has content.
-    - Create the PageData object.
-
-    We aren't doing anything fancy, we're just putting the data in a similar hierarchical structure,
-    but we're removing a lot of the data and making things more clearer now that we're using data classes.
-    '''
-    blocks = []
-    for block_idx, block in enumerate(page_dict["blocks"]):
-        if block.get("type") != 0:  # Skip non-text blocks
-            continue      
-        lines = []
-
-        # For a lines in a given block of text; use fallback if no lines.
-        for line_idx, line in enumerate(block.get("lines", [])):
-            
-            # Iterate through all spans in the line that have content
-            # 1. Create that bounding box 
-            # 2. create that text element. 
-            # Note: Definitely minimizing metadata unnecessary data, which is good.
-            elements = []
-            for span in line.get("spans", []):
-                if span['text'].strip() == "":
-                    continue
-                
-                bbox = BoundingBox(
-                  x0=round(span["bbox"][0], 2),
-                  y0=round(span["bbox"][1], 2),
-                  x1=round(span["bbox"][2], 2),
-                  y1=round(span["bbox"][3], 2),
-                )
-                element = TextElement(
-                    text=span["text"],
-                    bbox=bbox
-                )
-                elements.append(element)
-            
-            # If a line has words, record the line because it actaully has content!
-            if elements:
-                line_bbox = BoundingBox(
-                  x0=round(line["bbox"][0], 2),
-                  y0=round(line["bbox"][1], 2),
-                  x1=round(line["bbox"][2], 2),
-                  y1=round(line["bbox"][3], 2),
-                )
-
-                text_line = TextLine(
-                    elements=elements,
-                    bbox=line_bbox,
-                    line_id=line_idx
-                )
-                lines.append(text_line)
-        
-        # At thsi point we processed all of the lines. If we actually have lines (which have content)
-        # we'll record the text block!
-        if lines:
-            block_bbox = BoundingBox(
-              x0=round(block["bbox"][0], 2),
-              y0=round(block["bbox"][1], 2),
-              x1=round(block["bbox"][2], 2),
-              y1=round(block["bbox"][3], 2),
-            )
-            text_block = TextBlock(
-                lines=lines,
-                bbox=block_bbox,
-                block_id=block_idx
-            )
-            blocks.append(text_block)
+def pymupdf_to_document(doc) -> Document:
+    """Convert PyMuPDF document to our unified Document format"""
+    pages = []
+    full_text_parts = []
     
-    return PageData(
-        blocks=blocks,
-        width=page_dict["width"],
-        height=page_dict["height"],
+    for page_num, page in enumerate(doc):
+        # Using get_text("words") returns a list of lists:
+        # [x0,y0,x1,y1, "word", block_no, line_no, word_no]
+        tokens_data = page.get_text("words")
+        
+        tokens = []
+        page_text_parts = []
+        
+        for token_idx, token_data in enumerate(tokens_data):
+            if token_data[4].strip() == "":  # Skip empty tokens
+                continue 
+            
+            token = Token(
+                text=token_data[4],
+                bbox=BoundingBox(
+                    x0=round(token_data[0], 2),
+                    y0=round(token_data[1], 2),
+                    x1=round(token_data[2], 2),
+                    y1=round(token_data[3], 2)
+                ),
+                page_index=page_num,
+                token_index=len(full_text_parts)
+            )
+            tokens.append(token)
+            page_text_parts.append(token_data[4])
+        
+        if tokens:  # Only add pages that have tokens
+            page_obj = Page(
+                tokens=tokens,
+                width=page.rect.width,
+                height=page.rect.height,
+                page_index=page_num,
+                source="pymupdf"
+            )
+            pages.append(page_obj)
+            full_text_parts.extend(page_text_parts)
+    
+    return Document(
+        pages=pages,
+        full_text=" ".join(full_text_parts),
         source="pymupdf"
     )
 
+def google_doc_to_document(doc, pdf_doc) -> Document:
+    """Convert Google Document AI response to our unified Document format"""
+    pages = []
+    full_text_parts = []
+    document_text = doc.text
+    
+    for page_num, page in enumerate(doc.pages):
+        # Get original PDF page dimensions for bounding box conversion
+        page_width = pdf_doc[page_num].rect.width
+        page_height = pdf_doc[page_num].rect.height
+        
+        tokens = []
+        page_text_parts = []
+        
+        for token in page.tokens:
+            # Extract token text from text anchor
+            token_text = extract_text_from_text_anchor(token.layout.text_anchor, document_text)
+            if not token_text.strip():
+                continue
+            
+            token_obj = Token(
+                text=token_text,
+                bbox=convert_bounding_poly(token.layout.bounding_poly, page_width, page_height),
+                confidence=round(token.layout.confidence, 2),
+                page_index=page_num,
+                token_index=len(full_text_parts)
+            )
+            tokens.append(token_obj)
+            page_text_parts.append(token_text)
+        
+        if tokens:  # Only add pages that have tokens
+            page_obj = Page(
+                tokens=tokens,
+                width=page_width,
+                height=page_height,
+                page_index=page_num,
+                source="GoogleOCR"
+            )
+            pages.append(page_obj)
+            full_text_parts.extend(page_text_parts)
+    
+    return Document(
+        pages=pages,
+        full_text=" ".join(full_text_parts),
+        source="GoogleOCR"
+    )
+
+def convert_bounding_poly(bounding_poly, page_width: float, page_height: float) -> BoundingBox:
+    """Convert Google Document AI bounding poly to our BoundingBox format"""
+    x0 = round(bounding_poly.normalized_vertices[0].x * page_width, 2)
+    y0 = round(bounding_poly.normalized_vertices[0].y * page_height, 2)
+    x1 = round(bounding_poly.normalized_vertices[2].x * page_width, 2)
+    y1 = round(bounding_poly.normalized_vertices[2].y * page_height, 2)
+    return BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1)
+
+def extract_text_from_text_anchor(text_anchor, document_text: str) -> str:
+    """Extracts the text content corresponding to a TextAnchor from the full document"""
+    if not text_anchor or not text_anchor.text_segments:
+       return ""
+    extracted_text = ""
+    for segment in text_anchor.text_segments:
+      start_index = int(segment.start_index)
+      end_index = int(segment.end_index)
+      if 0 <= start_index < end_index <= len(document_text):
+         extracted_text += document_text[start_index:end_index]
+      else:
+        # Handle out of bounds indices
+        extracted_text += document_text[start_index:min(end_index, len(document_text))]
+    return extracted_text
 
 ##### For display purposes #####
-
 console = Console()
-def print_page_data(page_data: PageData):
-    tree = Tree(f"[bold magenta]Page (width={page_data.width}, height={page_data.height}, source={page_data.source})[/]")
-    for block in page_data.blocks:
-        block_node = tree.add(f"[bold blue]Block {block.block_id}[/] [dim](bbox={block.bbox})[/]")
-        for line in block.lines:
-            line_node = block_node.add(f"[green]Line {line.line_id}[/] [dim](bbox={line.bbox})[/]")
-            for elem in line.elements:
-                text_label = elem.text.replace("\n", "\\n")
-                pii_label = f"[red] ({elem.detected_as})[/]" if elem.detected_as else ""
-                line_node.add(f"[white]{text_label}[/]{pii_label} [dim](bbox={elem.bbox})[/]")
+
+def print_document(document: Document):
+    """Print document structure for debugging"""
+    tree = Tree(f"[bold magenta]Document (source={document.source}, pages={len(document.pages)})[/]")
+    tree.add(f"[bold blue]Full Text Length: {len(document.full_text)}[/]")
+    
+    for page in document.pages:
+        page_node = tree.add(f"[bold green]Page {page.page_index}[/] [dim]({page.width:.2f}x{page.height:.2f}, {len(page.tokens)} tokens)[/]")
+        for token in page.tokens:
+            text_label = token.text.replace("\n", "\\n")
+            pii_label = f"[red] ({token.detected_as})[/]" if token.detected_as else ""
+            confidence_label = f"[yellow] [{token.confidence}][/]" if token.confidence else ""
+            page_node.add(f"[white]{text_label}[/]{pii_label}{confidence_label} [dim](bbox={token.bbox})[/]")
+    
+    console.print(tree)
+
+def print_page(page: Page):
+    """Print single page structure for debugging"""
+    tree = Tree(f"[bold green]Page {page.page_index}[/] [dim]({page.width:.2f}x{page.height:.2f}, {len(page.tokens)} tokens)[/]")
+    for token in page.tokens:
+        text_label = token.text.replace("\n", "\\n")
+        pii_label = f"[red] ({token.detected_as})[/]" if token.detected_as else ""
+        confidence_label = f"[yellow] [{token.confidence}][/]" if token.confidence else ""
+        tree.add(f"[white]{text_label}[/]{pii_label}{confidence_label} [dim](bbox={token.bbox})[/]")
     console.print(tree)

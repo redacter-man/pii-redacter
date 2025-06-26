@@ -1,0 +1,7 @@
+'123-45-6789
+' detected as SSN (page 0, bbox: BoundingBox(x0=146.64, y0=188.93, x1=238.04, y1=199.16))
+'451-87-1327
+' detected as SSN (page 0, bbox: BoundingBox(x0=153.8, y0=508.14, x1=245.88, y1=520.08))
+'12345678901234567
+' detected as Account Number (page 0, bbox: BoundingBox(x0=156.53, y0=386.73, x1=280.33, y1=396.97))
+'12345678901234567 ' detected as Account Number (page 0, bbox: BoundingBox(x0=157.22, y0=397.99, x1=291.24, y1=411.63))
