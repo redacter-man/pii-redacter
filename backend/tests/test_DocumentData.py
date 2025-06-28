@@ -1,125 +1,35 @@
-import pytest
-from typing import List, Tuple, NamedTuple
+from pdf.DocumentData import Token, TextSegment, BoundingBox, PageData
 
-
-######## =================
-# Utility Classes For Testing for testing token overlap algorithm we drafted
-######## ===============
-# NOTE: Kind of sucks that I'm not testing the real classes or functions from DocumentData.py, but the test results give strong evidence
-# that the token overlap algorithm works, and that this indexedd-based way of searching for PIIs and target strings has some water to it.
-
-
-# TODO: Test the real classes and functions later.
-class Token(NamedTuple):
-  text: str
-  start: int
-  end: int
-  # NOTE: The only thing that separates this from the actual thing is that
-  # we don't have text segments holding the indices.
-
-
-class PIIMatch(NamedTuple):
-  text: str
-  start: int
-  end: int
-  pattern_type: str
-
-
-def create_tokens(word_positions: List[Tuple[str, int, int]]):
-  return [Token(word, start, end) for word, start, end in word_positions]
-
-
-def find_overlapping_tokens(tokens: List[Token], pii: PIIMatch) -> List[Token]:
-  """Find tokens that overlap with PII using specified algorithm"""
-  overlapping = []
-  for token in tokens:
-    if pii.start < token.end and pii.end > token.start:
-      overlapping.append(token)
-  return overlapping
-
-
-class TestTokenDetection:
-  def test_simple_credit_card_no_gaps(self):
-    # 1. Create text
-    # 2. Create tokens from text
-    # 3. Create the PII, all text within the range should be marked for;
-
-    # text = "My card is 1234567890123456 here"
-    # Note:
-
-    tokens = create_tokens(
-      [
-        ("My", 0, 2),
-        ("card", 3, 7),
-        ("is", 8, 10),
-        ("1234567890123456", 11, 27),
-        ("here", 28, 32),
-      ]
+def make_token(text, start, end):
+    # Create a simple token, we'll keep bounding box constant and only one text segment.
+    # Very simple and common case.
+    return Token(
+        text=text,
+        bbox=BoundingBox(0, 0, 10, 10),
+        text_segments=[TextSegment(start, end)]
     )
-    pii = PIIMatch("1234567890123456", 11, 27, "credit_card")
-    redacted_tokens = find_overlapping_tokens(tokens, pii)
-    assert len(redacted_tokens) == 1
-    assert redacted_tokens[0].text == "1234567890123456"
 
-  def test_credit_card_with_spaces(self):
-    # text = "Card: 1234 5678 9012 3456 end"
-    tokens = create_tokens(
-      [
-        ("Card:", 0, 5),
-        ("1234", 6, 10),
-        ("5678", 11, 15),
-        ("9012", 16, 20),
-        ("3456", 21, 25),
-        ("end", 26, 29),
-      ]
-    )
-    pii = PIIMatch("1234 5678 9012 3456", 6, 25, "credit_card")
-    redacted_tokens = find_overlapping_tokens(tokens, pii)
+def test_token_overlaps_with_span():
+    # Create a token and just pretend it's in a larger string, starting at index 5,
+    # and ending at index 10 (exclusive)
+    token = make_token("Hello", 5, 10)
+    assert token.overlaps_with_span(0, 6)       # Overlap at start
+    assert token.overlaps_with_span(9, 15)      # Overlap at end
+    assert token.overlaps_with_span(5, 10)      # Complete overlap
+    assert token.overlaps_with_span(0, 20)      # Token inside span
+    assert not token.overlaps_with_span(0, 5)   # No overlap (before)
+    assert not token.overlaps_with_span(10, 15) # No overlap (after)
 
-    assert len(redacted_tokens) == 4
-    assert [t.text for t in redacted_tokens] == ["1234", "5678", "9012", "3456"]
-
-  def test_partial_token_overlap(self):
-    # text = "prefix1234 5678 9012 3456suffix"
-    tokens = create_tokens(
-      [
-        ("prefix1234", 0, 10),
-        ("5678", 11, 15),
-        ("9012", 16, 20),
-        ("3456suffix", 21, 31),
-      ]
-    )
-    pii = PIIMatch("1234 5678 9012 3456", 6, 25, "credit_card")
-    redacted_tokens = find_overlapping_tokens(tokens, pii)
-
-    expected_result = ["prefix1234", "5678", "9012", "3456suffix"]
-    assert [t.text for t in redacted_tokens] == expected_result
-
-  def test_false_positive(self):
-    # text = "Address: 123 South Burger St. Card: 1234 4567 8901 2345"
-    tokens = create_tokens(
-      [
-        ("Address:", 0, 8),
-        ("123", 9, 12),
-        ("South", 13, 18),
-        ("Burger", 19, 25),
-        ("St.", 26, 29),
-        ("Card:", 30, 35),
-        ("1234", 36, 40),
-        ("4567", 41, 45),
-        ("8901", 46, 50),
-        ("2345", 51, 55),
-      ]
-    )
-    pii = PIIMatch("1234 4567 8901 2345", 36, 55, "credit_card")
-    redacted_tokens = find_overlapping_tokens(tokens, pii)
-    expected_result = [
-      "1234",
-      "4567",
-      "8901",
-      "2345",
+def test_page_data_get_tokens_in_span():
+    tokens = [
+        make_token("A", 0, 1),
+        make_token("B", 2, 4),
+        make_token("C", 5, 8)
     ]
 
-    # Shouldn't have 123, but should have the rest of the numbers
-    assert len(expected_result) == 4
-    assert [t.text for t in redacted_tokens] == expected_result
+    page = PageData(tokens=tokens)
+    # Span overlaps with "B" and "C"
+    result = page.get_tokens_in_span(3, 6)
+    assert tokens[1] in result
+    assert tokens[2] in result
+    assert tokens[0] not in result

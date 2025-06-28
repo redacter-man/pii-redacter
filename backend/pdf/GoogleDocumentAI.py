@@ -5,8 +5,6 @@ from google.cloud.documentai_v1.types import Document
 from google.protobuf.field_mask_pb2 import FieldMask
 
 
-
-
 # Set environment variable for authentication
 path_to_service_json = os.path.join(
   os.path.dirname(__file__), "..", "redacter-463315-a5d37ec88911.json"
@@ -47,17 +45,11 @@ def request_google_ocr(file_path: str) -> Document:
   )
 
   # 3. Create the request with the processor
-  request = documentai_v1.ProcessRequest(name=processor.name, raw_document=raw_document, field_mask=field_mask)
+  request = documentai_v1.ProcessRequest(
+    name=processor.name, raw_document=raw_document, field_mask=field_mask
+  )
   document = client.process_document(request=request).document
 
-  # Save the document as JSON for testing later, then  return the Document object
-  json_path = os.path.join(
-    os.path.dirname(__file__),
-    "test_data",
-    "json_outputs",
-    os.path.splitext(os.path.basename(file_path))[0] + ".json",
-  )
-  save_document_as_json(document, json_path)
   return document
 
 
