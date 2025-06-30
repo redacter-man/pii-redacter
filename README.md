@@ -11,12 +11,16 @@
 5. Run the project 
 ```python ./app.py
 
+# Cd into backend  folder
+python app.py
 ```
 
 ## Scripts
 ```bash
 # Formats all your code; try to do this before committing. 
 ruff format .
+
+pytest
 ```
 
 

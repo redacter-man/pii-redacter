@@ -2,6 +2,8 @@ import os
 from google.api_core.client_options import ClientOptions
 from google.cloud import documentai_v1
 from google.cloud.documentai_v1.types import Document
+from google.protobuf.field_mask_pb2 import FieldMask
+
 
 # Set environment variable for authentication
 path_to_service_json = os.path.join(
@@ -34,23 +36,20 @@ def request_google_ocr(file_path: str) -> Document:
   with open(file_path, "rb") as f:
     file_content = f.read()
 
+  # Only care about two pieces of data
+  field_mask = FieldMask(paths=["text", "pages.tokens"])
+
   # 2. Load it as a RawDocument (binary data essentially) and set it as a pdf
   raw_document = documentai_v1.RawDocument(
     content=file_content, mime_type="application/pdf"
   )
 
   # 3. Create the request with the processor
-  request = documentai_v1.ProcessRequest(name=processor.name, raw_document=raw_document)
+  request = documentai_v1.ProcessRequest(
+    name=processor.name, raw_document=raw_document, field_mask=field_mask
+  )
   document = client.process_document(request=request).document
 
-  # Save the document as JSON for testing later, then  return the Document object
-  json_path = os.path.join(
-    os.path.dirname(__file__),
-    "test_data",
-    "json_outputs",
-    os.path.splitext(os.path.basename(file_path))[0] + ".json",
-  )
-  save_document_as_json(document, json_path)
   return document
 
 
