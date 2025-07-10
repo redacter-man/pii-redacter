@@ -1,5 +1,5 @@
 import os, math
-import pymupdf
+import fitz
 from typing import List
 from .GoogleDocumentAI import (
   request_google_ocr,
@@ -82,12 +82,12 @@ class PDFAdapter:
     return extracted_text
 
   def google_doc_to_data(
-    pdf_doc: pymupdf.Document, pdf_path: str, use_cache=True
+    pdf_doc: fitz.Document, pdf_path: str, use_cache=True
   ) -> DocumentData:
     """Makes a google OCR request and turns the data into what we need for our workflow
 
     Args:
-        pdf_doc (pymupdf.Document): PDF document itself
+        pdf_doc (fitz.Document): PDF document itself
         pdf_path (str): Path to the pdf document
 
     Returns:
@@ -164,11 +164,11 @@ class PDFAdapter:
   ##########
   # PyMuPDF Related Code
   ##########
-  def pymupdf_to_data(doc: pymupdf.Document) -> DocumentData:
+  def fitz_to_data(doc: fitz.Document) -> DocumentData:
     """Parses a PyMuPDF document, reconstructing its full text and assigning start/end indices for each token (word) relative to where it's located in the tex.
 
     Args:
-        doc (pymupdf.Document): The PyMuPDF document object that we're parsing text from
+        doc (fitz.Document): The PyMuPDF document object that we're parsing text from
 
     Returns:
         DocumentData: A custom data model containing the reconstructed full document text and a list of PageData objects, each holding its parsed tokens.
