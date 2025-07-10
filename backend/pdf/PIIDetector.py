@@ -148,34 +148,34 @@ class PIIDetector:
 
     Note: Naive approach, yet will probably  still be effective
     """
-    pii_matches_path = os.path.join(job_dir, "pii_matches.txt")
-    pii_tokens_path = os.path.join(job_dir, "pii_tokens.txt")
-    document_text_path = os.path.join(job_dir, "document_text.txt")
+    # pii_matches_path = os.path.join(job_dir, "pii_matches.txt")
+    # pii_tokens_path = os.path.join(job_dir, "pii_tokens.txt")
+    # document_text_path = os.path.join(job_dir, "document_text.txt")
 
     pii_matches: List[PIIMatch] = PIIDetector.extract_pii_matches(doc_data.full_text)
     pii_tokens = []
 
     # Open both files before the loop
-    pii_matches_f = open(pii_matches_path, "w")
-    pii_tokens_f = open(pii_tokens_path, "w")
-    document_text_f = open(document_text_path, "w")
+    # pii_matches_f = open(pii_matches_path, "w")
+    # pii_tokens_f = open(pii_tokens_path, "w")
+    # document_text_f = open(document_text_path, "w")
 
 
-    document_text_f.write(repr(doc_data.full_text)) # use repr() to ensure we see hidden characters like \n, \t, etc.
-    document_text_f.close()
+    # document_text_f.write(repr(doc_data.full_text)) # use repr() to ensure we see hidden characters like \n, \t, etc.
+    # document_text_f.close()
 
     for page_index, page in enumerate(doc_data.pages):
       
       # Find and log the PIIs detected on current page
-      page_pii_matches = [
-        m
-        for m in pii_matches
-        if any(t.overlaps_with_span(m.start_index, m.end_index) for t in page.tokens)
-      ]
-      page_number = page_index + 1
+      # page_pii_matches = [
+      #   m
+      #   for m in pii_matches
+      #   if any(t.overlaps_with_span(m.start_index, m.end_index) for t in page.tokens)
+      # ]
+      # page_number = page_index + 1
 
-      for match in page_pii_matches:
-        pii_matches_f.write(f"Page {page_number}: {match}\n")
+      # for match in page_pii_matches:
+      #   pii_matches_f.write(f"Page {page_number}: {match}\n")
 
       # For pii
       for token in page.tokens:
@@ -185,12 +185,12 @@ class PIIDetector:
               token.detected_as = pii.pii_type.value
               pii_tokens.append((page_index, token))
               # Log redacted token for this page
-              pii_tokens_f.write(f"Page {page_number}: {token.text}\n")
+              # pii_tokens_f.write(f"Page {page_number}: {token.text}\n")
             break  # Already marked
       
 
-    pii_matches_f.close()
-    pii_tokens_f.close()
+    # pii_matches_f.close()
+    # pii_tokens_f.close()
     
     
     return pii_tokens
