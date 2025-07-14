@@ -42,8 +42,8 @@ class PIIDetector:
     # \d{3}        # Exactly three digits
     # [-.\s]?      # Optional separator: hyphen, dot, or whitespace
     # \d{4}        # Exactly four digits
-    PIIType.PHONE_NUMBER: r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
-    PIIType.EMAIL: r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    # PIIType.PHONE_NUMBER: r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
+    # PIIType.EMAIL: r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
   }
 
   """
