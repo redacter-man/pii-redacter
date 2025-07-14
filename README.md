@@ -77,18 +77,15 @@ pii-redaction-tool/
 6. **Output Generation**: Creates job directory containing:
    - Original PDF file
    - Redacted PDF file
-   - Text file with detected PII list
-   - Text file with redaction tokens/coordinates
 
 ### Workflow 2: Batch ZIP Processing
 
 1. **Input**: User provides path to ZIP file containing multiple PDFs
 2. **Extraction**: Application unzips files to the temporary processing directory
 3. **Batch Processing**: Each PDF in the archive follows the single PDF workflow
-4. **Consolidated Output**: Creates organized job directory with:
-   - Individual folders for each processed PDF
-   - Summary report of all detected PII across files
-   - Batch redaction statistics
+4. **Consolidated Output**: Creates a directory in the jobs folder, identified by the date and time the job was scheduled, which contains:
+   - Folder of input PDFs before redaction, called `input`
+   - Folder of input PDFs after redaction, called `output`
 
 ### Workflow 3: Output Review and Analysis
 
@@ -147,10 +144,12 @@ For each processed document, the application creates a job directory with the fo
 ```
 jobs/
 └── job_<timestamp>/
-    ├── original_document.pdf      # Original input file
-    ├── redacted_document.pdf      # PII-redacted version
-    ├── detected_pii.txt           # List of detected PII instances
-    └── redaction_tokens.txt       # Bounding box coordinates and tokens
+    └── input/
+        ├── original_document1.pdf      # Original input file
+        ├── original_document2.pdf
+    └── outlook/      
+        ├── masked-original_document1.pdf      # PII-redacted version
+        ├── masked-original_document2.pdf
 ```
 
 ## Development
