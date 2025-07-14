@@ -144,12 +144,13 @@ For each processed document, the application creates a job directory with the fo
 ```
 jobs/
 └── job_<timestamp>/
-    └── input/
-        ├── original_document1.pdf      # Original input file
-        ├── original_document2.pdf
-    └── outlook/      
-        ├── masked-original_document1.pdf      # PII-redacted version
-        ├── masked-original_document2.pdf
+    ├── input/
+    │   ├── original_document1.pdf      # Original input file
+    │   └── original_document2.pdf
+    ├── output/      
+    │   ├── masked-original_document1.pdf      # PII-redacted version
+    │   └── masked-original_document2.pdf
+    └── masked-<zip-file-name>.zip
 ```
 
 ## Development
