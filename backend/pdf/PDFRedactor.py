@@ -23,47 +23,38 @@ class PDFRedactor:
         shutil.rmtree(work_dir)
     os.makedirs(work_dir, exist_ok=True)
 
+    input_dir = os.path.join(work_dir, "input")
+    output_dir = os.path.join(work_dir, "output")
+    os.mkdir(input_dir)
+    os.mkdir(output_dir)
+
     # Extract all files from the zip (flat structure)
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(work_dir)
+        zip_ref.extractall(input_dir)
 
     # List all PDFs in the work_dir (no recursion)
-    pdf_files = [os.path.join(work_dir, f) for f in os.listdir(work_dir) if f.lower().endswith('.pdf')]
+    pdf_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.lower().endswith('.pdf')]
 
     # Process and redact each PDF
     for pdf_path in pdf_files:
         try:
-            PDFRedactor.process_single_pdf(work_dir, pdf_path)
+            PDFRedactor.process_single_pdf(output_dir, pdf_path)
         except Exception as e:
             logger.error(f"File Processing Error - {str(e)}")
 
-    # Collect original and redacted PDFs only
-    redacted_pdfs = []
-    session = SessionLocal()
-    for pdf_path in pdf_files:
-        base = os.path.splitext(os.path.basename(pdf_path))[0]
-        orig_path = pdf_path
-        redacted_path = os.path.join(work_dir, f"redacted-{base}.pdf")
-        for path in [orig_path, redacted_path]:
-            if os.path.isfile(path):
-                redacted_pdfs.append(path)
-                session.add(File(path=path))
-    session.commit()
-    session.close()
-
-    # Create a new zip file with redacted PDFs
+    # Collect original and redacted PDFs only for database logging
+    # Create zip file with all redacted pdfs
     base_name = os.path.splitext(os.path.basename(zip_path))[0]
-    redacted_zip_path = os.path.join(work_dir, f"{base_name}-redacted.zip")
+    redacted_zip_path = os.path.join(work_dir, f"masked-{base_name}.zip")
     with zipfile.ZipFile(redacted_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for pdf in redacted_pdfs:
-            arcname = os.path.basename(pdf)
-            zipf.write(pdf, arcname=arcname)
-
-    logger.info(f"Redacted zip '{zip_path}'")
-
-
-
-
+      session = SessionLocal()
+      for file in os.listdir(output_dir):
+        full_path = os.path.join(output_dir, file)
+        zipf.write(full_path, arcname=file)  # <-- Save file to zip
+        session.add(File(path=full_path))
+      session.commit()
+      session.close()
+    
 
   def process_single_pdf(work_dir, pdf_path: str) -> None:
     """Redacts a single pdf file"""
@@ -96,9 +87,8 @@ class PDFRedactor:
       PDFRedactor.redact_pdf_content(pdf_page, token.bbox)
       pdf_page.apply_redactions()
     
-    # Copy original pdf and redacted version to the work directory
-    shutil.copy2(pdf_path, os.path.join(work_dir, pdf_name))        
-    pdf_doc.save(os.path.join(work_dir, f"{pdf_name}-redacted.pdf"), garbage=4)
+    # redacted version to the work directory
+    pdf_doc.save(os.path.join(work_dir, f"masked-{pdf_name}.pdf"), garbage=4)
     pdf_doc.close()
 
   def redact_pdf_content(page: fitz.Page, bbox: BoundingBox) -> None:
