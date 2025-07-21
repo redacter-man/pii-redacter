@@ -196,6 +196,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Other stuff
-output
-cache
+# Other stuff 
+jobs
