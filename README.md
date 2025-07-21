@@ -115,7 +115,7 @@ pii-redaction-tool/
    pip install -r requirements.txt
    ```
 
-3. **Google Cloud Setup**
+3. **Google Cloud Setup** - detailed setup instructions [here](https://github.com/redacter-man/pii-redacter/issues/3)
    - Create a Google Cloud project
    - Enable the Document AI API
    - Create a service account and download the JSON key file
