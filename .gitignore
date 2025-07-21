@@ -196,5 +196,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+backend/credentials.json
 # Other stuff 
 jobs
+backend/credentials.json
