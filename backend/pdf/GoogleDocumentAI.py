@@ -7,7 +7,7 @@ from google.protobuf.field_mask_pb2 import FieldMask
 
 # Set environment variable for authentication
 path_to_service_json = os.path.join(
-  os.path.dirname(__file__), "..", "redacter-463315-a5d37ec88911.json"
+    os.path.dirname(__file__), "..", "credentials.json"
 )
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path_to_service_json
 
