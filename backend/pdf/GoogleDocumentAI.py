@@ -20,11 +20,15 @@ location = "us"
 opts = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
 
 # Initialize Document AI client and get a reference to the processor
-client = documentai_v1.DocumentProcessorServiceClient(client_options=opts)
-full_processor_name = client.processor_path(project_id, location, processor_id)
-request = documentai_v1.GetProcessorRequest(name=full_processor_name)
-processor = client.get_processor(request=request)
-
+try:
+    client = documentai_v1.DocumentProcessorServiceClient(client_options=opts)
+    full_processor_name = client.processor_path(project_id, location, processor_id)
+    request = documentai_v1.GetProcessorRequest(name=full_processor_name)
+    processor = client.get_processor(request=request)
+    # You can now use `processor`
+except Exception as e:
+    print(f"Google Document AI API Startup Error: {e}")
+    processor = None
 
 def request_google_ocr(file_path: str) -> Document:
   """Make a request to the Document AI API to do OCR and process a document"""

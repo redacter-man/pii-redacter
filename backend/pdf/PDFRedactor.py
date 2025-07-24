@@ -51,7 +51,7 @@ class PDFRedactor:
       for file in os.listdir(output_dir):
         full_path = os.path.join(output_dir, file)
         zipf.write(full_path, arcname=file)  # <-- Save file to zip
-        session.add(File(path=full_path))
+        session.add(File(path=full_path, status=True))
       session.commit()
       session.close()
     

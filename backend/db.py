@@ -7,6 +7,7 @@ class File(Base):
     __tablename__ = "files"
     id = Column(Integer, primary_key=True, autoincrement=True)
     path = Column(String, nullable=False)
+    status = Column(String, nullable=False)
 
 # SQLite setup
 DATABASE_URL = "sqlite:///files.db"
