@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
@@ -7,6 +7,7 @@ class File(Base):
     __tablename__ = "files"
     id = Column(Integer, primary_key=True, autoincrement=True)
     path = Column(String, nullable=False)
+    status = Column(Boolean, nullable=False)
 
 # SQLite setup
 DATABASE_URL = "sqlite:///files.db"
