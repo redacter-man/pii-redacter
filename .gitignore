@@ -199,3 +199,5 @@ cython_debug/
 # Other stuff 
 jobs
 backend/credentials.json
+output
+files.db
